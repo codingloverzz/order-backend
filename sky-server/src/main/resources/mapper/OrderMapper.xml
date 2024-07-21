@@ -64,4 +64,30 @@
             </if>
         </where>
     </select>
+    <select id="getOrderCountByConditions" resultType="java.lang.Integer">
+        select count(*) from orders
+        <where>
+            <if test="dayStart!=null">
+                and order_time &gt;= #{dayStart}
+            </if>
+            <if test="dayEnd!=null">
+                and order_time &lt;= #{dayEnd}
+            </if>
+            <if test="status!=null">
+                and status = #{status}
+            </if>
+        </where>
+    </select>
+    <select id="getSaleTop10" resultType="com.sky.dto.GoodsSalesDTO">
+        select od.name, sum(od.number) as number
+        from order_detail od,
+             orders o
+        where od.order_id = o.id
+          and o.status = 5
+          and o.order_time &gt; #{timeStart}
+          and o.order_time &lt; #{timeEnd}
+        group by od.name
+        order by number desc
+        limit 0,10
+    </select>
 </mapper>
