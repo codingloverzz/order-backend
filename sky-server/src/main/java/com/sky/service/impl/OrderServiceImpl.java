@@ -5,15 +5,14 @@ import com.alibaba.fastjson.JSONObject;
 import com.github.pagehelper.Page;
 import com.github.pagehelper.PageHelper;
 import com.sky.context.BaseContext;
-import com.sky.dto.OrdersPageQueryDTO;
-import com.sky.dto.OrdersPaymentDTO;
-import com.sky.dto.OrdersSubmitDTO;
+import com.sky.dto.*;
 import com.sky.entity.*;
 import com.sky.exception.OrderBusinessException;
 import com.sky.mapper.*;
 import com.sky.result.PageResult;
 import com.sky.service.OrderService;
 import com.sky.vo.OrderPaymentVO;
+import com.sky.vo.OrderStatisticsVO;
 import com.sky.vo.OrderSubmitVO;
 import com.sky.vo.OrderVO;
 import com.sky.websocket.WebSocketServer;
@@ -181,11 +180,66 @@ public class OrderServiceImpl implements OrderService {
         return new PageResult(page.getTotal(), page.getResult());
     }
 
-    public List<OrderVO> getOrderVOList(Page<OrderVO> page){
+    @Override
+    public PageResult getOrder4User(OrdersPageQueryDTO ordersPageQueryDTO) {
+        ordersPageQueryDTO.setUserId(BaseContext.getCurrentId());
+
+        PageHelper.startPage(ordersPageQueryDTO.getPage(), ordersPageQueryDTO.getPageSize());
+        Page<OrderVO> page = orderMapper.pageQuery(ordersPageQueryDTO);
+        List<OrderVO> orderVOList = page.getResult();
+        for (OrderVO order : orderVOList) {
+
+            order.setOrderDetailList(orderDetailMapper.getByOrderId(order.getId()));
+        }
+
+        return new PageResult(page.getTotal(), orderVOList);
+    }
+
+    @Override
+    public void confirm(OrdersConfirmDTO ordersConfirmDTO) {
+        Orders order = Orders.builder().id(ordersConfirmDTO.getId()).status(Orders.CONFIRMED).build();
+        orderMapper.update(order);
+    }
+
+    @Override
+    public void rejection(OrdersRejectionDTO ordersRejectionDTO) {
+        Orders order = Orders.builder()
+                .id(ordersRejectionDTO.getId())
+                .status(Orders.CANCELLED)
+                .rejectionReason(ordersRejectionDTO.getRejectionReason())
+                .cancelTime(LocalDateTime.now())
+                .build();
+        orderMapper.update(order);
+    }
+
+    @Override
+    public void cancel(OrdersCancelDTO ordersCancelDTO) {
+        Orders orders = new Orders();
+        orders.setId(ordersCancelDTO.getId());
+        orders.setStatus(Orders.CANCELLED);
+        orders.setCancelReason(ordersCancelDTO.getCancelReason());
+        orders.setCancelTime(LocalDateTime.now());
+        orderMapper.update(orders);
+    }
+
+    @Override
+    public OrderStatisticsVO statistics() {
+        Integer toBeConfirmed = orderMapper.countByStatus(Orders.TO_BE_CONFIRMED);
+        Integer confirmed = orderMapper.countByStatus(Orders.CONFIRMED);
+        Integer deliveryInProgress = orderMapper.countByStatus(Orders.DELIVERY_IN_PROGRESS);
+
+        OrderStatisticsVO orderStatisticsVO  =new OrderStatisticsVO();
+        orderStatisticsVO.setToBeConfirmed(toBeConfirmed);
+        orderStatisticsVO.setConfirmed(confirmed);
+        orderStatisticsVO.setDeliveryInProgress(deliveryInProgress);
+        return orderStatisticsVO;
+    }
+
+    public List<OrderVO> getOrderVOList(Page<OrderVO> page) {
         List<OrderVO> pageResult = page.getResult();
 
-        if(pageResult.size()>0){
-            pageResult.forEach(e->{
+        if (pageResult.size() > 0) {
+            pageResult.forEach(e -> {
                 String orderDishes = getOrderDishes(e.getId());
                 e.setOrderDishes(orderDishes);
             });
@@ -193,11 +247,11 @@ public class OrderServiceImpl implements OrderService {
         return pageResult;
     }
 
-    public String getOrderDishes(Long orderId){
+    public String getOrderDishes(Long orderId) {
         List<OrderDetail> orderDetails = orderDetailMapper.getByOrderId(orderId);
         List<String> stringList = orderDetails.stream().map(e -> {
             return e.getName() + "*" + e.getNumber() + ";";
         }).collect(Collectors.toList());
-        return String.join("",stringList);
+        return String.join("", stringList);
     }
 }

@@ -50,4 +50,7 @@ public interface OrderMapper {
     Integer getOrderCountByConditions(Map<String, Object> condition);
 
     List<GoodsSalesDTO> getSaleTop10(LocalDateTime timeStart, LocalDateTime timeEnd);
+
+    @Select("select count(*) from orders where status = #{status}")
+    Integer countByStatus(Integer status);
 }

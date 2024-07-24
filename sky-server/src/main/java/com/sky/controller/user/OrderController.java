@@ -1,8 +1,12 @@
 package com.sky.controller.user;
 
+import com.sky.context.BaseContext;
+import com.sky.dto.OrdersDTO;
+import com.sky.dto.OrdersPageQueryDTO;
 import com.sky.dto.OrdersPaymentDTO;
 import com.sky.dto.OrdersSubmitDTO;
 import com.sky.entity.OrderDetail;
+import com.sky.result.PageResult;
 import com.sky.result.Result;
 import com.sky.service.OrderService;
 import com.sky.vo.OrderPaymentVO;
@@ -55,5 +59,12 @@ public class OrderController {
         OrderVO orderVO = orderService.detail(id);
 
         return Result.success(orderVO);
+    }
+
+    @GetMapping("/historyOrders")
+
+    public Result<PageResult> historyOrders(OrdersPageQueryDTO ordersPageQueryDTO){
+        PageResult pageResult = orderService.getOrder4User(ordersPageQueryDTO);
+        return Result.success(pageResult);
     }
 }
